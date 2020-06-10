@@ -6,56 +6,42 @@ import os
 from tensorflow import keras
 import matplotlib.pyplot as plt
 
-#%%
-def main():
-    try: 
-        parser = argparse.ArgumentParser(description='Welcome! Hope you know what you are doing.')
-        parser.add_argument('--train', help='train.csv from Kaggle (Titanic)', type=str, required=True)
-        parser.add_argument('--test', help='test.csv from Kaggle (Titanic)', type=str, required=True)
-        args = parser.parse_args()
-        #print(args.train)
-        train = pd.read_csv(args.train)
-        test = pd.read_csv(args.test)
-    except:
-        train_path = r'C:\Users\joyce\Desktop\Jeremie\github\kaggle-titanic\data\train.csv'
-        test_path = r'C:\Users\joyce\Desktop\Jeremie\github\kaggle-titanic\data\test.csv'
-        
-        train = pd.read_csv(train_path)
-        test = pd.read_csv(train_path)
-    
-    try:
-        print(os.getcwd())
-        os.chdir(r'C:\Users\joyce\Desktop\Jeremie\github\kaggle-titanic')
-    except:
-        pass
+def preprocess(df):
+    drop_names = ['Name', 'Ticket', 'PassengerId']
+    to_categorical = ['Embarked', 'Cabin', 'Sex']
 
-    def preprocess(df):
-        drop_names = ['Name', 'Ticket', 'PassengerId']
-        to_categorical = ['Embarked', 'Cabin', 'Sex']
+    df.drop(columns=drop_names, inplace=True)
+    for s in to_categorical:
+        df[s] = df[s].astype('category').cat.codes
 
-        df.drop(columns=drop_names, inplace=True)
-        for s in to_categorical:
-            df[s] = df[s].astype('category').cat.codes
-    
-    def plot_learning_curves(history):
-        losses, accuracies = history.history['loss'], history.history['binary_accuracy']
-        val_losses, val_accuracies = history.history['val_loss'], history.history['val_binary_accuracy']
+def plot_learning_curves(h):
+        losses, accuracies = h.history['loss'], h.history['binary_accuracy']
+        val_losses, val_accuracies = h.history['val_loss'], h.history['val_binary_accuracy']
         
-        plt.plot(losses, label='Loss')
-        plt.plot(val_losses, label='Validation Loss')
+        plt.plot(losses, label='Train loss')
+        plt.plot(val_losses, label='Validation loss')
         plt.title('Loss over epochs')
         plt.xlabel('Epochs')
         plt.ylabel('Loss')
         plt.legend(loc='best')
         plt.show()
         
-        plt.plot(accuracies, label='Accuracy')
-        plt.plot(val_accuracies, label='Validation Accuracy')
+        plt.plot(accuracies, label='Train accuracy')
+        plt.plot(val_accuracies, label='Validation accuracy')
         plt.title('Accuracy over epochs')
         plt.xlabel('Epochs')
         plt.ylabel('Accuracy')
         plt.legend(loc='best')
         plt.show()
+
+def main():
+    parser = argparse.ArgumentParser(description='Welcome! Hope you know what you are doing.')
+    parser.add_argument('--train', help='train.csv from Kaggle (Titanic)', type=str, required=True)
+    parser.add_argument('--test', help='test.csv from Kaggle (Titanic)', type=str, required=True)
+    args = parser.parse_args()
+
+    train = pd.read_csv(args.train)
+    test = pd.read_csv(args.test)
     
     preprocess(test)
     preprocess(train)
@@ -86,9 +72,11 @@ def main():
     
     print(model.summary())
     
-    history = model.fit(X_train, y_train, batch_size= 32, validation_split=0.33, epochs=1024, verbose=1)
+    h = model.fit(X_train, y_train, batch_size=32, validation_split=0.33, epochs=64, verbose=1,
+        workers=8, use_multiprocessing=True
+    )
     
-    plot_learning_curves(history)
+    plot_learning_curves(h)
     
     loss, m = model.evaluate(X_test, y_test, verbose=0)
     
@@ -98,8 +86,5 @@ def main():
     # predictions = model.predict(X_unknow)
 
 
-
 if __name__ == '__main__':
     main()
-
-#%%
