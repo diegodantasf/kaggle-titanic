@@ -2,9 +2,12 @@ import argparse
 
 import pandas as pd
 import numpy as np
-import os
-from tensorflow import keras
 import matplotlib.pyplot as plt
+
+from tensorflow import keras
+from sklearn.preprocessing import MinMaxScaler
+
+
 
 def preprocess(df):
     drop_names = ['Name', 'Ticket', 'PassengerId']
@@ -37,27 +40,43 @@ def plot_learning_curves(h):
 def main():
     parser = argparse.ArgumentParser(description='Welcome! Hope you know what you are doing.')
     parser.add_argument('--train', help='train.csv from Kaggle (Titanic)', type=str, required=True)
-    parser.add_argument('--test', help='test.csv from Kaggle (Titanic)', type=str, required=True)
     args = parser.parse_args()
 
     train = pd.read_csv(args.train)
-    test = pd.read_csv(args.test)
     
-    preprocess(test)
     preprocess(train)
 
     X = train.loc[:, 'Pclass':].to_numpy()
     y = train.loc[:, 'Survived'].to_numpy().reshape((-1, 1))
-    X_unknow = test.to_numpy()
 
     # Remove (bad) samples that do not contain all features
     mask = ~np.isnan(X).any(axis=1)
     X = X[mask]; y = y[mask]
 
+    # Shuffle
+
+    np.random.seed(1337) # Fixed seed
+
+    permutation = np.arange(X.shape[0])
+    np.random.shuffle(permutation)
+    X = X[permutation]; y = y[permutation]
+
     # Split dataset
     # 80% train 20% test
-    X_train = X[:int(0.8 * X.shape[0])]; y_train = y[:int(0.8 * X.shape[0])]
-    X_test = X[int(0.8 * X.shape[0]):]; y_test = y[int(0.8 * X.shape[0]):]
+    X_train, y_train = X[:int(0.8 * X.shape[0])], y[:int(0.8 * X.shape[0])]
+    X_test, y_test = X[int(0.8 * X.shape[0]):], y[int(0.8 * X.shape[0]):]
+
+    # Normalize
+    
+    scaler_X = MinMaxScaler(feature_range=(0, 1))
+    scaler_y = MinMaxScaler(feature_range=(0, 1))
+    scaler_X = scaler_X.fit(X_train)
+    scaler_y = scaler_y.fit(y_train)
+    
+    X_train, y_train = scaler_X.transform(X_train), scaler_y.transform(y_train)
+    X_test, y_test = scaler_X.transform(X_test), scaler_y.transform(y_test)
+
+    # Model
 
     keras.backend.set_floatx('float64')
 
@@ -72,7 +91,7 @@ def main():
     
     print(model.summary())
     
-    h = model.fit(X_train, y_train, batch_size=32, validation_split=0.33, epochs=64, verbose=1,
+    h = model.fit(X_train, y_train, batch_size=32, validation_split=0.33, epochs=512, verbose=1,
         workers=8, use_multiprocessing=True
     )
     
@@ -82,9 +101,6 @@ def main():
     
     print('Loss: %f' % loss)
     print('Accuracy %f' % m)
-
-    # predictions = model.predict(X_unknow)
-
 
 if __name__ == '__main__':
     main()
