@@ -8,7 +8,6 @@ from tensorflow import keras
 from sklearn.preprocessing import MinMaxScaler
 
 
-
 def preprocess(df):
     drop_names = ['Name', 'Ticket', 'PassengerId']
     to_categorical = ['Embarked', 'Cabin', 'Sex']
@@ -17,37 +16,8 @@ def preprocess(df):
     for s in to_categorical:
         df[s] = df[s].astype('category').cat.codes
 
-def plot_learning_curves(h):
-        losses, accuracies = h.history['loss'], h.history['binary_accuracy']
-        val_losses, val_accuracies = h.history['val_loss'], h.history['val_binary_accuracy']
-        
-        plt.plot(losses, label='Train loss')
-        plt.plot(val_losses, label='Validation loss')
-        plt.title('Loss over epochs')
-        plt.xlabel('Epochs')
-        plt.ylabel('Loss')
-        plt.legend(loc='best')
-        plt.show()
-        
-        plt.plot(accuracies, label='Train accuracy')
-        plt.plot(val_accuracies, label='Validation accuracy')
-        plt.title('Accuracy over epochs')
-        plt.xlabel('Epochs')
-        plt.ylabel('Accuracy')
-        plt.legend(loc='best')
-        plt.show()
-
-def main():
-    parser = argparse.ArgumentParser(description='Welcome! Hope you know what you are doing.')
-    parser.add_argument('--train', help='train.csv from Kaggle (Titanic)', type=str, required=True)
-    args = parser.parse_args()
-
-    train = pd.read_csv(args.train)
-    
-    preprocess(train)
-
-    X = train.loc[:, 'Pclass':].to_numpy()
-    y = train.loc[:, 'Survived'].to_numpy().reshape((-1, 1))
+    X = df.loc[:, 'Pclass':].to_numpy()
+    y = df.loc[:, 'Survived'].to_numpy().reshape((-1, 1))
 
     # Remove (bad) samples that do not contain all features
     mask = ~np.isnan(X).any(axis=1)
@@ -76,16 +46,48 @@ def main():
     X_train, y_train = scaler_X.transform(X_train), scaler_y.transform(y_train)
     X_test, y_test = scaler_X.transform(X_test), scaler_y.transform(y_test)
 
+    return X_train, y_train, X_test, y_test
+
+def plot_learning_curves(h):
+    losses, accuracies = h.history['loss'], h.history['binary_accuracy']
+    val_losses, val_accuracies = h.history['val_loss'], h.history['val_binary_accuracy']
+    
+    plt.plot(losses, label='Train loss')
+    plt.plot(val_losses, label='Validation loss')
+    plt.title('Loss over epochs')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend(loc='best')
+    plt.show()
+    
+    plt.plot(accuracies, label='Train accuracy')
+    plt.plot(val_accuracies, label='Validation accuracy')
+    plt.title('Accuracy over epochs')
+    plt.xlabel('Epochs')
+    plt.ylabel('Accuracy')
+    plt.legend(loc='best')
+    plt.show()
+
+def main():
+    parser = argparse.ArgumentParser(description='Welcome! Hope you know what you are doing.')
+    parser.add_argument('--train', help='train.csv from Kaggle (Titanic)', type=str, default='data/train.csv')
+    args = parser.parse_args()
+
+    train = pd.read_csv(args.train)
+
+    X_train, y_train, X_test, y_test = preprocess(train)
+
     # Model
 
     keras.backend.set_floatx('float64')
 
     model = keras.models.Sequential([
-    keras.layers.Dense(1, input_dim=8, activation='linear', kernel_regularizer=keras.regularizers.l2(0.01))])
+        keras.layers.Dense(1, input_dim=8, activation='sigmoid', kernel_regularizer=keras.regularizers.l2(0.01))
+    ])
     
     model.compile(
         optimizer='Adam', 
-        loss=keras.losses.BinaryCrossentropy(from_logits=True),
+        loss=keras.losses.BinaryCrossentropy(),
         metrics=[keras.metrics.BinaryAccuracy()]
     )
     
