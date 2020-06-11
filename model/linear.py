@@ -1,52 +1,14 @@
 import argparse
+import sys;
+sys.path.append('..')
+sys.path.append('.')
 
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
 from tensorflow import keras
-from sklearn.preprocessing import MinMaxScaler
-
-
-def preprocess(df):
-    drop_names = ['Name', 'Ticket', 'PassengerId']
-    to_categorical = ['Embarked', 'Cabin', 'Sex']
-
-    df.drop(columns=drop_names, inplace=True)
-    for s in to_categorical:
-        df[s] = df[s].astype('category').cat.codes
-
-    X = df.loc[:, 'Pclass':].to_numpy()
-    y = df.loc[:, 'Survived'].to_numpy().reshape((-1, 1))
-
-    # Remove (bad) samples that do not contain all features
-    mask = ~np.isnan(X).any(axis=1)
-    X = X[mask]; y = y[mask]
-
-    # Shuffle
-
-    np.random.seed(1337) # Fixed seed
-
-    permutation = np.arange(X.shape[0])
-    np.random.shuffle(permutation)
-    X = X[permutation]; y = y[permutation]
-
-    # Split dataset
-    # 80% train 20% test
-    X_train, y_train = X[:int(0.8 * X.shape[0])], y[:int(0.8 * X.shape[0])]
-    X_test, y_test = X[int(0.8 * X.shape[0]):], y[int(0.8 * X.shape[0]):]
-
-    # Normalize
-    
-    scaler_X = MinMaxScaler(feature_range=(0, 1))
-    scaler_y = MinMaxScaler(feature_range=(0, 1))
-    scaler_X = scaler_X.fit(X_train)
-    scaler_y = scaler_y.fit(y_train)
-    
-    X_train, y_train = scaler_X.transform(X_train), scaler_y.transform(y_train)
-    X_test, y_test = scaler_X.transform(X_test), scaler_y.transform(y_test)
-
-    return X_train, y_train, X_test, y_test
+from preprocessing.naive import NaiveProcessor
 
 def plot_learning_curves(h):
     losses, accuracies = h.history['loss'], h.history['binary_accuracy']
@@ -74,18 +36,19 @@ def main():
         Welcome! Hope you know what you are doing.
         Run this code from the model directory if you want to use the default values for arguments.
     """)
-    parser.add_argument('--train', help='path totrain.csv from Kaggle (Titanic)', type=str, default='../data/train.csv')
-    parser.add_argument('--save', help='whether to save the model or not (0 or 1)', type=bool, default=False)
+    parser.add_argument('--train', help='path to train.csv from Kaggle (Titanic)', type=str, default='../data/train.csv')
     parser.add_argument('--checkpoint-dir', help='path to output the trained model', type=str, default='../checkpoint/linear')
+    parser.add_argument('--save', help='whether to save the model or not', action='store_true')
     args = parser.parse_args()
 
     train = pd.read_csv(args.train)
 
-    X_train, y_train, X_test, y_test = preprocess(train)
+    processor = NaiveProcessor(train)
+    X, y = processor(train, with_label=True)
 
     # Model
-
     keras.backend.set_floatx('float64')
+    np.random.seed(1337)
 
     model = keras.models.Sequential([
         keras.layers.Dense(1, input_dim=8, activation='sigmoid', kernel_regularizer=keras.regularizers.l2(0.01))])
@@ -97,7 +60,6 @@ def main():
     
     print(model.summary())
 
-
     if args.save:
         checkpoint = keras.callbacks.ModelCheckpoint(
             filepath= args.checkpoint_dir, 
@@ -105,18 +67,13 @@ def main():
             mode='min',
             save_best_only=True)
 
-        h = model.fit(X_train, y_train, batch_size=32, validation_split=0.33, epochs=512, verbose=1,
-            workers=8, use_multiprocessing=True, callbacks=[checkpoint])
+        h = model.fit(X, y, batch_size=32, validation_split=0.2, epochs=512, verbose=1,
+            shuffle=True, workers=8, use_multiprocessing=True, callbacks=[checkpoint])
     else:
-        h = model.fit(X_train, y_train, batch_size=32, validation_split=0.33, epochs=512, verbose=1,
-            workers=8, use_multiprocessing=True)
+        h = model.fit(X, y, batch_size=32, validation_split=0.2, epochs=512, verbose=1,
+            shuffle=True, workers=8, use_multiprocessing=True)
     
     plot_learning_curves(h)
-    
-    loss, m = model.evaluate(X_test, y_test, verbose=0)
-    
-    print('Train loss: %f' % loss)
-    print('Train accuracy %f' % m)
 
 if __name__ == '__main__':
     main()
