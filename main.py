@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 
 from tensorflow import keras
-from preprocessing.naive import NaiveProcessor
+from preprocessor.naive import NaiveProcessor
 
 def main():
     parser = argparse.ArgumentParser(description=

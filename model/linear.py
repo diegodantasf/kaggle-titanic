@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from tensorflow import keras
-from preprocessing.naive import NaiveProcessor
+from preprocessor.naive import NaiveProcessor
 
 def plot_learning_curves(h):
     losses, accuracies = h.history['loss'], h.history['binary_accuracy']
