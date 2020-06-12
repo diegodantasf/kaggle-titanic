@@ -12,7 +12,7 @@ def main():
     """)
     parser.add_argument('--train', help='path to train.csv from Kaggle (Titanic)', type=str, default='data/train.csv')
     parser.add_argument('--test', help='path to test.csv from Kaggle (Titanic)', type=str, default='data/test.csv')
-    parser.add_argument('--checkpoint-dir', help='path to directory of the model', type=str, default='checkpoint/linear')
+    parser.add_argument('--checkpoint-dir', help='path to directory of the model', type=str, default='checkpoint/linear.hdf5')
     parser.add_argument('-p', help='type of preprocessing (available: naive)', type=str, default='naive')
     parser.add_argument('-o', help='name of output file with results to submit on Kaggle', type=str, default='result')
     args = parser.parse_args()
