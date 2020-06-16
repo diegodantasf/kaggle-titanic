@@ -39,7 +39,7 @@ def main():
         Run this code from the model directory if you want to use the default values for arguments.
     """)
     parser.add_argument('--train', help='path to train.csv from Kaggle (Titanic)', type=str, default='../data/train.csv')
-    parser.add_argument('--checkpoint-dir', help='path to output the trained model', type=str, default='../checkpoint/linear.hdf5')
+    parser.add_argument('--checkpoint-dir', help='path to output the trained model', type=str, default='../checkpoint/linear')
     parser.add_argument('--save', help='whether to save the model or not', action='store_true')
     args = parser.parse_args()
     
